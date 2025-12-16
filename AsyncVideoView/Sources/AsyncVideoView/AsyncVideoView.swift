@@ -44,6 +44,7 @@ public final class AsyncVideoView: UIView {
             displayLayer.stopRequestingMediaData()
             displayLayer.flushAndRemoveImage()
         }
+        disableBackgroundHandling()
     }
 
     override public func layoutSubviews() {
@@ -83,6 +84,7 @@ private extension AsyncVideoView {
         displayLayer.videoGravity = .resizeAspect
         layer.addSublayer(displayLayer)
         backgroundColor = .clear
+        enableBackgroundHandling()
     }
 
     private func stopAndCleanup() {
@@ -337,5 +339,34 @@ private extension AsyncVideoView {
             guard let self else { return }
             displayLayer.stopRequestingMediaData()
         }
+    }
+}
+
+private extension AsyncVideoView {
+    private func enableBackgroundHandling() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
+
+    private func disableBackgroundHandling() {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func appDidEnterBackground() {
+        stop()
+    }
+
+    @objc private func appWillEnterForeground() {
+        start()
     }
 }
