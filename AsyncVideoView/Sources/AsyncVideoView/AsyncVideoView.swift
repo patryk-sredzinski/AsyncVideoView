@@ -82,6 +82,11 @@ public extension AsyncVideoView {
 private extension AsyncVideoView {
     private func commonInit() {
         displayLayer.videoGravity = .resizeAspect
+        if #available(iOS 26.0, *) {
+            displayLayer.preferredDynamicRange = .standard
+        } else if #available(iOS 17.0, *) {
+            displayLayer.wantsExtendedDynamicRangeContent = false
+        }
         layer.addSublayer(displayLayer)
         backgroundColor = .clear
         enableBackgroundHandling()
