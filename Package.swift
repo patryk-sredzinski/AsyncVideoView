@@ -15,7 +15,7 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/patryk-sredzinski/IteoLogger.git",
+            url: "https://github.com/psredzinski/IteoLogger.git",
             from: "1.7.0"
         )
     ],
