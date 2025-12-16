@@ -1,0 +1,26 @@
+# Xcode
+*.xcworkspace
+*.xccheckout
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+*.xcuserstate
+
+# Xcode user-specific data (keeps changing)
+xcuserdata/
+*.xcuserdata/
+
+# Swift Package Manager
+/.build/
+/Package.resolved
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.swp
+*.lock
+*.tmp
+*.log
+
+# Derived data
+DerivedData/
