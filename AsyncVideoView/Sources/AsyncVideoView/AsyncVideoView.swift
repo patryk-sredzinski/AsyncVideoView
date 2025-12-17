@@ -264,6 +264,7 @@ private extension AsyncVideoView {
         guard displayLayer.status != .failed else {
             IteoLogger.default.log(.error, .video, "Display layer failed with error", "error", String(describing: displayLayer.error))
             stopAndCleanup()
+            start()
             return
         }
 
