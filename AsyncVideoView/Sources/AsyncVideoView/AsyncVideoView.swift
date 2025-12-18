@@ -57,7 +57,7 @@ public final class AsyncVideoView: UIView {
 }
 
 public extension AsyncVideoView {
-    func configure(url: URL) {
+    func configure(url: URL?) {
         if currentURL != url {
             stopAndCleanup()
         }
