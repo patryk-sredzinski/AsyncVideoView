@@ -283,6 +283,19 @@ private extension AsyncVideoView {
 
             let frameTime = sampleBuffer.presentationTimeStamp
 
+            if let controlTimebase = displayLayer.controlTimebase {
+                let displayTime = controlTimebase.time
+                        let drift = CMTimeSubtract(displayTime, frameTime)
+                        let driftSeconds = abs(drift.seconds)
+
+                if driftSeconds > 0.25 {
+                    CMTimebaseSetTime(controlTimebase, time: frameTime)
+                    displayLayer.flush()
+                    IteoLogger.default.log(.warning, .video, "Drift detected, flushing layer", "drift", driftSeconds)
+                    continue
+                }
+            }
+
             displayLayer.enqueue(sampleBuffer)
 
             if frameCount == 1 || frameCount % 30 == 0 {
