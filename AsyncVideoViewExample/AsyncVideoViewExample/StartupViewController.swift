@@ -19,13 +19,13 @@ class StartupViewController: UIViewController {
         return stack
     }()
 
-    let cellHeights: [CGFloat] = [50, 100, 200, 300, 400, 500, 1000]
+    let cellHeights: [CGFloat] = [50, 75, 100, 200, 300, 400, 500, 1000]
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupView()
         setupStackView()
-        (stackView.arrangedSubviews[2] as? UIButton)?.sendActions(for: .touchUpInside)
+        (stackView.arrangedSubviews[0] as? UIButton)?.sendActions(for: .touchUpInside)
     }
 
     private func setupView() {
@@ -41,7 +41,7 @@ class StartupViewController: UIViewController {
 
         cellHeights.forEach { cellHeight in
             let button = UIButton()
-            button.setTitle("Start \(cellHeight)", for: .normal)
+            button.setTitle("Cell Height \(Int(cellHeight))px", for: .normal)
             button.translatesAutoresizingMaskIntoConstraints = false
             button.addAction(UIAction(title: "Start \(cellHeight)", handler: { [weak self] _ in
                 self?.navigationController?.pushViewController(ExampleViewController(cellHeight: cellHeight), animated: true)

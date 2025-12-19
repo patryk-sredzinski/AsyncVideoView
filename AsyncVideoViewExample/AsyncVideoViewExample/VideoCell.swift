@@ -80,7 +80,7 @@ class VideoCell: UITableViewCell {
     }
 
     private func updateTextLabel() {
-        if duration == .zero || currentTimestamp == .zero {
+        if duration == .zero {
             timeLabel.text = ""
             return
         }

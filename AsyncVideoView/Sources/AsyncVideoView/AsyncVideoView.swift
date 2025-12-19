@@ -22,6 +22,7 @@ public final class AsyncVideoView: UIView {
     private var asset: AsyncVideoAsset?
     private var currentURL: URL?
     private var isReading = false
+    private var frameCount = 0
 
     public weak var delegate: AsyncVideoViewDelegate?
 
@@ -45,6 +46,11 @@ public final class AsyncVideoView: UIView {
             displayLayer.flushAndRemoveImage()
         }
         disableBackgroundHandling()
+    }
+
+    public override func removeFromSuperview() {
+        super.removeFromSuperview()
+        stopAndCleanup()
     }
 
     override public func layoutSubviews() {
@@ -94,6 +100,7 @@ private extension AsyncVideoView {
 
     private func stopAndCleanup() {
         isReading = false
+        frameCount = 0
 
         onMainThread { [weak self] in
             guard let self else { return }
@@ -217,8 +224,7 @@ private extension AsyncVideoView {
         }
 
         displayLayer.requestMediaDataWhenReady(on: workingQueue) { [weak self] in
-            guard let self else { return }
-            handleLayerReadyForData(url: url)
+            self?.handleLayerReadyForData(url: url)
         }
     }
 
@@ -256,11 +262,6 @@ private extension AsyncVideoView {
             return
         }
 
-        guard displayLayer.isReadyForMoreMediaData else {
-            IteoLogger.default.log(.warning, .video, "Display layer not ready for more media data")
-            return
-        }
-
         guard displayLayer.status != .failed else {
             IteoLogger.default.log(.error, .video, "Display layer failed with error", "error", String(describing: displayLayer.error))
             stopAndCleanup()
@@ -268,21 +269,28 @@ private extension AsyncVideoView {
             return
         }
 
-        guard let sampleBuffer = videoOutput?.copyNextSampleBuffer() else {
-            loopVideo(url: url)
-            return
-        }
 
-        guard isValidURL(url), isReading else {
-            return
-        }
+        while displayLayer.isReadyForMoreMediaData {
+            guard let sampleBuffer = videoOutput?.copyNextSampleBuffer() else {
+                loopVideo(url: url)
+                return
+            }
 
-        displayLayer.enqueue(sampleBuffer)
+            frameCount += 1
 
-        let timeStamp = sampleBuffer.presentationTimeStamp
-        onMainThread { [weak self] in
-            guard let self else { return }
-            delegate?.asyncVideoView(videoView: self, didRenderFrame: timeStamp)
+            guard isValidURL(url), isReading else {
+                return
+            }
+
+            displayLayer.enqueue(sampleBuffer)
+
+            if frameCount == 1 || frameCount % 30 == 0 {
+                let timeStamp = sampleBuffer.presentationTimeStamp
+                onMainThread { [weak self] in
+                    guard let self else { return }
+                    delegate?.asyncVideoView(videoView: self, didRenderFrame: timeStamp)
+                }
+            }
         }
     }
 
