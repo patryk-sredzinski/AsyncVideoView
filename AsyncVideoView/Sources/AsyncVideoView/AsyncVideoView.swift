@@ -1,28 +1,12 @@
-//
-//  AsyncVideoView.swift
-//  AsyncVideoView
-//
-//  Created by Patryk Średziński on 10/04/2025.
-//
-
 import AVFoundation
 import UIKit
 import IteoLogger
 
 public final class AsyncVideoView: UIView {
-    private let workingQueue = DispatchQueue(label: "com.vama.AsyncVideoViewQueue")
-    private let displayLayer = AVSampleBufferDisplayLayer()
-
-    private static let videoOutputSettings: [String: Any] = [
-        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
-    ]
-
-    private var assetReader: AVAssetReader?
-    private var videoOutput: AVAssetReaderTrackOutput?
-    private var asset: AsyncVideoAsset?
+    private var player: AVPlayer?
+    private var playerLayer: AVPlayerLayer?
+    private var timeObserver: Any?
     private var currentURL: URL?
-    private var isReading = false
-    private var frameCount = 0
 
     public weak var delegate: AsyncVideoViewDelegate?
 
@@ -37,339 +21,138 @@ public final class AsyncVideoView: UIView {
     }
 
     deinit {
-        isReading = false
-        assetReader?.cancelReading()
-        asset?.urlAsset.cancelLoading()
-        let displayLayer = self.displayLayer
-        onMainThread {
-            displayLayer.stopRequestingMediaData()
-            displayLayer.flushAndRemoveImage()
-        }
+        cleanup()
         disableBackgroundHandling()
-    }
-
-    public override func removeFromSuperview() {
-        super.removeFromSuperview()
-        stopAndCleanup()
     }
 
     override public func layoutSubviews() {
         super.layoutSubviews()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        displayLayer.frame = bounds
+        playerLayer?.frame = bounds
         CATransaction.commit()
+    }
+
+    public override func removeFromSuperview() {
+        super.removeFromSuperview()
+        cleanup()
     }
 }
 
 public extension AsyncVideoView {
     func configure(url: URL?) {
-        if currentURL != url {
-            stopAndCleanup()
-        }
+        guard currentURL != url else { return }
+        cleanup()
         currentURL = url
     }
 
     func start() {
-        guard let currentURL else {
+        guard let url = currentURL else {
             IteoLogger.default.log(.error, .video, "Start called but currentURL is nil")
             return
         }
-        workingQueue.async { [weak self] in
-            self?.setupWithURL(currentURL)
+
+        if let player {
+            player.play()
+            return
         }
+
+        setupPlayer(with: url)
     }
 
     func stop() {
-        stopAndCleanup()
+        player?.pause()
     }
 }
 
 private extension AsyncVideoView {
     private func commonInit() {
-        displayLayer.videoGravity = .resizeAspect
-        if #available(iOS 26.0, *) {
-            displayLayer.preferredDynamicRange = .standard
-        } else if #available(iOS 17.0, *) {
-            displayLayer.wantsExtendedDynamicRangeContent = false
-        }
-        layer.addSublayer(displayLayer)
         backgroundColor = .clear
         enableBackgroundHandling()
     }
 
-    private func stopAndCleanup() {
-        isReading = false
-        frameCount = 0
+    private func setupPlayer(with url: URL) {
+        let asset = AVURLAsset(url: url)
+        let playerItem = AVPlayerItem(asset: asset)
+        playerItem.audioTimePitchAlgorithm = .timeDomain
 
-        onMainThread { [weak self] in
-            guard let self else { return }
-            displayLayer.stopRequestingMediaData()
-            displayLayer.flushAndRemoveImage()
-        }
+        let player = AVPlayer(playerItem: playerItem)
+        player.isMuted = true
+        player.preventsDisplaySleepDuringVideoPlayback = false
+        player.actionAtItemEnd = .none
 
-        workingQueue.async { [weak self] in
-            guard let self else { return }
-            assetReader?.cancelReading()
-            asset?.urlAsset.cancelLoading()
-            assetReader = nil
-            videoOutput = nil
-        }
+        self.player = player
+
+        let layer = AVPlayerLayer(player: player)
+        layer.videoGravity = .resizeAspect
+        layer.frame = bounds
+        layer.allowsEdgeAntialiasing = false
+        layer.allowsGroupOpacity = false
+        self.layer.addSublayer(layer)
+        self.playerLayer = layer
+
+        setupObservers(for: playerItem, player: player, asset: asset)
+
+        player.play()
     }
 
-    private func loadAsset(_ url: URL, completion: @escaping (AsyncVideoAsset?) -> Void) {
-        Task {
-            do {
-                let asset = try await AsyncVideoAsset(url: url)
-                completion(asset)
-            } catch {
-                IteoLogger.default.log(.error, .video, "loadAsset failed with error", "error", error, url)
-                completion(nil)
-            }
-        }
-    }
-
-    private func setupWithURL(_ url: URL) {
-        guard isValidURL(url, context: "setupWithURL") else {
-            return
-        }
-
-        loadAsset(url) { [weak self] asset in
-            guard let self else { return }
-            guard let asset else {
-                IteoLogger.default.log(.error, .video, "Failed to setup asset for URL", "url", url)
-                return
-            }
-            guard isValidURL(url, context: "setupWithURL during asset load") else {
-                return
-            }
-            self.asset = asset
-
-            onMainThread { [weak self] in
-                guard let self else { return }
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
-                displayLayer.setAffineTransform(asset.preferredTransform)
-                CATransaction.commit()
-                delegate?.asyncVideoView(videoView: self, didReceiveAssetDuration: asset.duration)
-            }
-            workingQueue.async { [weak self] in
-                guard let self else { return }
-                startReading(url: url)
-            }
-        }
-    }
-
-    private func startReading(url: URL) {
-        guard let asset else {
-            IteoLogger.default.log(.error, .video, "No native asset available for reading")
-            return
-        }
-        guard isValidURL(url, context: "startReading") else {
-            return
-        }
-
-        guard let assetReader = try? AVAssetReader(asset: asset.urlAsset) else {
-            IteoLogger.default.log(.error, .video, "Failed to create AVAssetReader")
-            return
-        }
-
-        let videoTrack = asset.track
-        let videoOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: Self.videoOutputSettings)
-        videoOutput.supportsRandomAccess = true
-        assetReader.add(videoOutput)
-
-        guard assetReader.startReading() else {
-            IteoLogger.default.log(.error, .video, "Failed to start reading", "error", String(describing: assetReader.error))
-            return
-        }
-
-        self.assetReader = assetReader
-        self.videoOutput = videoOutput
-        self.isReading = true
-
-        setupControlTimebase()
-        startEnqueueingFrames(url: url)
-    }
-
-    private func setupControlTimebase() {
-        var controlTimebase: CMTimebase?
-        CMTimebaseCreateWithSourceClock(
-            allocator: kCFAllocatorDefault,
-            sourceClock: CMClockGetHostTimeClock(),
-            timebaseOut: &controlTimebase
+    private func setupObservers(for playerItem: AVPlayerItem, player: AVPlayer, asset: AVAsset) {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(playerItemDidReachEnd),
+            name: .AVPlayerItemDidPlayToEndTime,
+            object: playerItem
         )
 
-        guard let controlTimebase else {
-            IteoLogger.default.log(.error, .video, "setupControlTimebase failed - could not create control timebase")
-            return
-        }
-
-        onMainThread { [weak self] in
-            guard let self else { return }
-            self.displayLayer.controlTimebase = controlTimebase
-            CMTimebaseSetTime(controlTimebase, time: CMTime.zero)
-            CMTimebaseSetRate(controlTimebase, rate: 1.0)
-        }
-    }
-
-    private func startEnqueueingFrames(url: URL) {
-        guard isValidURL(url, context: "startEnqueueingFrames") else {
-            return
-        }
-
-        guard isReading else {
-            IteoLogger.default.log(.warning, .video, "startEnqueueingFrames early return - not reading")
-            return
-        }
-
-        displayLayer.requestMediaDataWhenReady(on: workingQueue) { [weak self] in
-            self?.handleLayerReadyForData(url: url)
-        }
-    }
-
-    private func handleLayerReadyForData(url: URL) {
-        guard isValidURL(url) else {
-            stopDisplayLayer()
-            return
-        }
-
-        guard isReading else {
-            IteoLogger.default.log(.warning, .video, "startEnqueueingFrames closure early return - not reading")
-            stopDisplayLayer()
-            return
-        }
-
-        guard let assetReader else {
-            IteoLogger.default.log(.warning, .video, "No asset reader available")
-            stopDisplayLayer()
-            return
-        }
-
-        if assetReader.status == .failed {
-            IteoLogger.default.log(.error, .video, "Asset reader failed with error", "error", String(describing: assetReader.error))
-            onMainThread { [weak self] in
-                self?.start()
-            }
-            return
-        }
-
-        guard assetReader.status == .reading else {
-            IteoLogger.default.log(.warning, .video, "Asset reader stopped reading with status", "status", "\(assetReader.status)")
-            onMainThread { [weak self] in
-                self?.start()
-            }
-            return
-        }
-
-        guard displayLayer.status != .failed else {
-            IteoLogger.default.log(.error, .video, "Display layer failed with error", "error", String(describing: displayLayer.error))
-            stopAndCleanup()
-            start()
-            return
-        }
-
-        while displayLayer.isReadyForMoreMediaData {
-            guard let sampleBuffer = videoOutput?.copyNextSampleBuffer() else {
-                loopVideo(url: url)
-                return
-            }
-
-            frameCount += 1
-
-            guard isValidURL(url), isReading else {
-                return
-            }
-
-            let frameTime = sampleBuffer.presentationTimeStamp
-
-            displayLayer.enqueue(sampleBuffer)
-
-            if frameCount == 1 || frameCount % 30 == 0 {
-                onMainThread { [weak self] in
-                    guard let self else { return }
-                    delegate?.asyncVideoView(videoView: self, didRenderFrame: frameTime)
+        let interval = CMTime(seconds: 0.5, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+            Task { [weak self] in
+                guard let self else { return }
+                await MainActor.run {
+                    self.delegate?.asyncVideoView(videoView: self, didRenderFrame: time)
                 }
             }
         }
-    }
 
-    private func loopVideo(url: URL) {
-        guard isValidURL(url, context: "loopVideo"), isReading else {
-            return
-        }
-
-        onMainThread { [weak self] in
-            guard let self else { return }
-            displayLayer.stopRequestingMediaData()
-            displayLayer.flush()
-        }
-
-        guard let videoOutput, let assetReader, let asset else {
-            IteoLogger.default.log(.error, .video, "Missing components for looping, cleaning up")
-            stopAndCleanup()
-            return
-        }
-
-        guard CMTIME_IS_NUMERIC(asset.timeRange.start) else {
-            IteoLogger.default.log(.error, .video, "Invalid time range for looping, cleaning up")
-            stopAndCleanup()
-            return
-        }
-
-        guard assetReader.status != .failed else {
-            IteoLogger.default.log(.error, .video, "loopVideo early return - AssetReader in failed state, cleaning up", "error", String(describing: assetReader.error))
-            stopAndCleanup()
-            return
-        }
-
-        let beginningTimeRange = NSValue(timeRange: asset.timeRange)
-        videoOutput.reset(forReadingTimeRanges: [beginningTimeRange])
-        setupControlTimebase()
-        startEnqueueingFrames(url: url)
-    }
-
-    private func onMainThread(_ closure: @escaping () -> Void) {
-        if Thread.isMainThread {
-            closure()
-        } else {
-            DispatchQueue.main.async {
-                closure()
+        Task { [weak self] in
+            do {
+                guard let self else { return }
+                let duration = try await asset.load(.duration)
+                await MainActor.run {
+                    self.delegate?.asyncVideoView(videoView: self, didReceiveAssetDuration: duration)
+                }
+            } catch {
+                IteoLogger.default.log(.error, .video, "Failed to load duration", "error", error)
             }
         }
     }
 
-    private func isValidURL(_ url: URL, context: String = "") -> Bool {
-        guard currentURL == url else {
-            let contextMsg = context.isEmpty ? "" : " - \(context)"
-            IteoLogger.default.log(.warning, .video, "URL validation failed\(contextMsg)", "currentURL", currentURL?.lastPathComponent ?? "nil", "requested", url.lastPathComponent)
-            return false
-        }
-        return true
+    @objc private func playerItemDidReachEnd(notification: Notification) {
+        player?.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+        player?.play()
     }
 
-    private func stopDisplayLayer() {
-        onMainThread { [weak self] in
-            guard let self else { return }
-            displayLayer.stopRequestingMediaData()
+    private func cleanup() {
+        if let currentItem = player?.currentItem {
+            NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: currentItem)
         }
+
+        if let observer = timeObserver {
+            player?.removeTimeObserver(observer)
+            timeObserver = nil
+        }
+
+        player?.pause()
+        playerLayer?.removeFromSuperlayer()
+        player = nil
+        playerLayer = nil
     }
 }
 
 private extension AsyncVideoView {
     private func enableBackgroundHandling() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(appDidEnterBackground),
-            name: UIApplication.didEnterBackgroundNotification,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(appWillEnterForeground),
-            name: UIApplication.willEnterForegroundNotification,
-            object: nil
-        )
+        NotificationCenter.default.addObserver(self, selector: #selector(appDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(appWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
     }
 
     private func disableBackgroundHandling() {
