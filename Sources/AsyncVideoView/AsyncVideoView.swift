@@ -89,6 +89,11 @@ private extension AsyncVideoView {
         layer.frame = bounds
         layer.allowsEdgeAntialiasing = false
         layer.allowsGroupOpacity = false
+        if #available(iOS 26.0, *) {
+            layer.preferredDynamicRange = .standard
+        } else  if #available(iOS 17.0, *) {
+            layer.wantsExtendedDynamicRangeContent = false
+        }
         self.layer.addSublayer(layer)
         self.playerLayer = layer
 

@@ -10,17 +10,17 @@ import UIKit
 class ExampleViewController: UIViewController {
 
     private let sampleVideos = [
-        "boat",
-        "day_city",
-        "fireplace",
-        "night_city",
-        "starfish",
-        "cabana",
-        "cicada",
-        "day_square",
-        "legs",
-        "people_walking",
-        "surfing"
+        "boat.mp4",
+        "day_city.mp4",
+        "fireplace.mp4",
+        "night_city.mp4",
+        "starfish.mp4",
+        "cabana.mov",
+        "cicada.mp4",
+        "day_square.mp4",
+        "legs.mp4",
+        "people_walking.mp4",
+        "surfing.mp4"
     ]
 
     private let tableView: UITableView = {
@@ -67,8 +67,11 @@ class ExampleViewController: UIViewController {
 
     private func generateRandomData() {
         for _ in 1...1000 {
-            let fileName = sampleVideos.randomElement()!
-            guard let url = Bundle.main.url(forResource: fileName, withExtension: "mp4") else {
+            let fileFullName = sampleVideos.randomElement()!
+            let fileData = fileFullName.split(separator: ".")
+            let fileName = String(fileData[0])
+            let fileExtension = String(fileData[1])
+            guard let url = Bundle.main.url(forResource: fileName, withExtension: fileExtension) else {
                 fatalError("Could not load video \(fileName)")
             }
             videoUrl.append(url)
