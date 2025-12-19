@@ -269,7 +269,6 @@ private extension AsyncVideoView {
             return
         }
 
-
         while displayLayer.isReadyForMoreMediaData {
             guard let sampleBuffer = videoOutput?.copyNextSampleBuffer() else {
                 loopVideo(url: url)
@@ -282,13 +281,14 @@ private extension AsyncVideoView {
                 return
             }
 
+            let frameTime = sampleBuffer.presentationTimeStamp
+
             displayLayer.enqueue(sampleBuffer)
 
             if frameCount == 1 || frameCount % 30 == 0 {
-                let timeStamp = sampleBuffer.presentationTimeStamp
                 onMainThread { [weak self] in
                     guard let self else { return }
-                    delegate?.asyncVideoView(videoView: self, didRenderFrame: timeStamp)
+                    delegate?.asyncVideoView(videoView: self, didRenderFrame: frameTime)
                 }
             }
         }
