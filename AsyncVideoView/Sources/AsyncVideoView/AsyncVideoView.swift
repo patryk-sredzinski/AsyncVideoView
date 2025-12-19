@@ -75,6 +75,7 @@ private extension AsyncVideoView {
         let asset = AVURLAsset(url: url)
         let playerItem = AVPlayerItem(asset: asset)
         playerItem.audioTimePitchAlgorithm = .timeDomain
+        playerItem.appliesPerFrameHDRDisplayMetadata = false
 
         let player = AVPlayer(playerItem: playerItem)
         player.isMuted = true

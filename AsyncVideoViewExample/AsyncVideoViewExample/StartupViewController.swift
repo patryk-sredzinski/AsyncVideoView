@@ -25,7 +25,7 @@ class StartupViewController: UIViewController {
         super.viewDidLoad()
         setupView()
         setupStackView()
-        (stackView.arrangedSubviews[0] as? UIButton)?.sendActions(for: .touchUpInside)
+        (stackView.arrangedSubviews[3] as? UIButton)?.sendActions(for: .touchUpInside)
     }
 
     private func setupView() {
