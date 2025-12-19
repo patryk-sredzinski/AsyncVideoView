@@ -5,6 +5,6 @@
       location = "group:AsyncVideoViewExample/AsyncVideoViewExample.xcodeproj">
    </FileRef>
    <FileRef
-      location = "group:AsyncVideoView">
+      location = "self:">
    </FileRef>
 </Workspace>

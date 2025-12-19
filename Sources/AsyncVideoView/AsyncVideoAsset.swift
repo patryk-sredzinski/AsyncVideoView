@@ -48,3 +48,4 @@ final class AsyncVideoAsset: NSObject {
         self.preferredTransform = loadedPreferredTransform
     }
 }
+

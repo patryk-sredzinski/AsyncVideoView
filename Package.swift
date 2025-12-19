@@ -24,8 +24,7 @@ let package = Package(
             name: "AsyncVideoView",
             dependencies: [
                 .product(name: "IteoLogger", package: "IteoLogger")
-            ],
-            path: "AsyncVideoView/Sources/AsyncVideoView"
+            ]
         ),
     ]
 )

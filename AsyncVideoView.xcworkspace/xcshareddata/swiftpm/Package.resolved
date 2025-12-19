@@ -1,10 +1,10 @@
 {
-  "originHash" : "93c541cefa3169fe2532bc46bfb117bcc495a0435b7ac23ae7b834879f1500c4",
+  "originHash" : "3e1a5e00f2b6c7adb51d78f9cb736f7e762693d10090ae274c9fd9f0504f2062",
   "pins" : [
     {
       "identity" : "iteologger",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com//patryk-sredzinski/IteoLogger.git",
+      "location" : "https://github.com/psredzinski/IteoLogger.git",
       "state" : {
         "revision" : "47588d76106f23d1c2f9bacc79085c2529fc79e8",
         "version" : "1.7.0"

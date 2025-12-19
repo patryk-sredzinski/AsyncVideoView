@@ -1,0 +1,15 @@
+# Exclude example app from Swift Package Manager
+AsyncVideoViewExample/
+AsyncVideoViewExample.xcodeproj/
+Example.xcodeproj/
+*.xcworkspace
+
+# Exclude user-specific data
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+
+# Exclude build artifacts
+.build/
+DerivedData/
+

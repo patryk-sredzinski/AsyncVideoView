@@ -12,3 +12,4 @@ public protocol AsyncVideoViewDelegate: AnyObject {
     func asyncVideoView(videoView: AsyncVideoView, didReceiveAssetDuration assetDuration: CMTime)
     func asyncVideoView(videoView: AsyncVideoView, didRenderFrame timeStamp: CMTime)
 }
+
