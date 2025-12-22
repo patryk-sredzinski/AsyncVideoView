@@ -10,7 +10,6 @@ import UIKit
 class ExampleViewController: UIViewController {
 
     private let sampleVideos = [
-        "boat.mp4",
         "day_city.mp4",
         "fireplace.mp4",
         "night_city.mp4",
