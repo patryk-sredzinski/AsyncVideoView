@@ -11,6 +11,7 @@ import IteoLogger
 
 public final class AsyncVideoView: UIView {
     private let workingQueue = DispatchQueue(label: "com.vama.AsyncVideoViewQueue")
+    private let displayLayer = AVSampleBufferDisplayLayer()
 
     private static let videoOutputSettings: [String: Any] = [
         kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
@@ -46,14 +47,6 @@ public final class AsyncVideoView: UIView {
         }
         disableBackgroundHandling()
     }
-
-    override public class var layerClass: AnyClass {
-            return AVSampleBufferDisplayLayer.self
-        }
-
-        private var displayLayer: AVSampleBufferDisplayLayer {
-            return layer as! AVSampleBufferDisplayLayer
-        }
 
     public override func removeFromSuperview() {
         super.removeFromSuperview()
@@ -100,6 +93,7 @@ private extension AsyncVideoView {
         } else if #available(iOS 17.0, *) {
             displayLayer.wantsExtendedDynamicRangeContent = false
         }
+        layer.addSublayer(displayLayer)
         backgroundColor = .clear
         enableBackgroundHandling()
     }
