@@ -99,6 +99,10 @@ private extension AsyncVideoView {
     }
 
     private func stopAndCleanup() {
+        guard isReading else {
+            return
+        }
+
         isReading = false
         frameCount = 0
 
