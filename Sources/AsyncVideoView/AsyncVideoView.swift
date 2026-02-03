@@ -316,7 +316,7 @@ private extension AsyncVideoView {
             return
         }
 
-        onMainThread { [weak self] in
+        onMainThread(sync: true) { [weak self] in
             guard let self else { return }
             displayLayer.stopRequestingMediaData()
             displayLayer.flush()
@@ -346,12 +346,18 @@ private extension AsyncVideoView {
         startEnqueueingFrames(url: url)
     }
 
-    private func onMainThread(_ closure: @escaping () -> Void) {
+    private func onMainThread(sync: Bool = false,_ closure: @escaping () -> Void) {
         if Thread.isMainThread {
             closure()
         } else {
-            DispatchQueue.main.async {
-                closure()
+            if sync {
+                DispatchQueue.main.sync {
+                    closure()
+                }
+            } else {
+                DispatchQueue.main.async {
+                    closure()
+                }
             }
         }
     }
