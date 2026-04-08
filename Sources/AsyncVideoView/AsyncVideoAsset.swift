@@ -22,11 +22,9 @@ final class AsyncVideoAsset: NSObject {
 
     init(url: URL) async throws {
         let urlAsset = AVURLAsset(url: url)
-        async let tracks = urlAsset.loadTracks(withMediaType: .video)
-        async let duration = urlAsset.load(.duration)
-        async let isPlayable = urlAsset.load(.isPlayable)
-
-        let (loadedTracks, loadedDuration, loadedIsPlayable) = try await (tracks, duration, isPlayable)
+        let loadedTracks = try await urlAsset.loadTracks(withMediaType: .video)
+        let loadedDuration = try await urlAsset.load(.duration)
+        let loadedIsPlayable = try await urlAsset.load(.isPlayable)
         guard loadedIsPlayable else {
             IteoLogger.default.log(.error, .video, "AsyncAsset init failed - video track not playable for URL", url)
             throw AsyncVideoAssetError.videoTrackNotPlayable
@@ -36,10 +34,8 @@ final class AsyncVideoAsset: NSObject {
             throw AsyncVideoAssetError.videoTrackNotAvailable
         }
 
-        async let timeRange = loadedVideoTrack.load(.timeRange)
-        async let preferredTransform = loadedVideoTrack.load(.preferredTransform)
-
-        let (loadedTimeRange, loadedPreferredTransform) = try await (timeRange, preferredTransform)
+        let loadedTimeRange = try await loadedVideoTrack.load(.timeRange)
+        let loadedPreferredTransform = try await loadedVideoTrack.load(.preferredTransform)
 
         self.urlAsset = urlAsset
         self.track = loadedVideoTrack

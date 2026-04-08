@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		60747A912EF027B3007A2D6B /* AsyncVideoView in Frameworks */ = {isa = PBXBuildFile; productRef = 60747A902EF027B3007A2D6B /* AsyncVideoView */; };
+		60A26D192F866A8100013BB4 /* AsyncVideoView in Frameworks */ = {isa = PBXBuildFile; productRef = 60A26D182F866A8100013BB4 /* AsyncVideoView */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,7 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				60747A912EF027B3007A2D6B /* AsyncVideoView in Frameworks */,
+				60A26D192F866A8100013BB4 /* AsyncVideoView in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -91,7 +91,7 @@
 			);
 			name = AsyncVideoViewExample;
 			packageProductDependencies = (
-				60747A902EF027B3007A2D6B /* AsyncVideoView */,
+				60A26D182F866A8100013BB4 /* AsyncVideoView */,
 			);
 			productName = AsyncVideoViewExample;
 			productReference = 60747A762EF02626007A2D6B /* AsyncVideoViewExample.app */;
@@ -121,6 +121,9 @@
 			);
 			mainGroup = 60747A6D2EF02626007A2D6B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				60A26D172F866A8100013BB4 /* XCLocalSwiftPackageReference "../../AsyncVideoView" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 60747A772EF02626007A2D6B /* Products */;
 			projectDirPath = "";
@@ -362,8 +365,15 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		60A26D172F866A8100013BB4 /* XCLocalSwiftPackageReference "../../AsyncVideoView" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../AsyncVideoView;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
-		60747A902EF027B3007A2D6B /* AsyncVideoView */ = {
+		60A26D182F866A8100013BB4 /* AsyncVideoView */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AsyncVideoView;
 		};
