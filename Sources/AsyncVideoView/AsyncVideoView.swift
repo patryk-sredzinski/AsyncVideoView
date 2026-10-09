@@ -14,7 +14,9 @@ public final class AsyncVideoView: UIView {
     private let displayLayer = AVSampleBufferDisplayLayer()
 
     private static let videoOutputSettings: [String: Any] = [
-        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
+        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange,
+        // The display layer can only render IOSurface-backed buffers; the simulator's software decoder doesn't create them by default.
+        kCVPixelBufferIOSurfacePropertiesKey as String: [String: Any]()
     ]
 
     private var assetReader: AVAssetReader?
@@ -70,9 +72,9 @@ public extension AsyncVideoView {
         currentURL = url
     }
 
+    /// Callers may start before the URL is known (e.g. a cell displayed while its video is still downloading).
     func start() {
         guard let currentURL else {
-            IteoLogger.default.log(.error, .video, "Start called but currentURL is nil")
             return
         }
         workingQueue.async { [weak self] in
@@ -287,15 +289,13 @@ private extension AsyncVideoView {
 
             let frameTime = sampleBuffer.presentationTimeStamp
 
+            // Frames ahead of the clock are normal buffering, only resync when frames arrive late.
             if let controlTimebase = displayLayer.controlTimebase {
-                let displayTime = controlTimebase.time
-                        let drift = CMTimeSubtract(displayTime, frameTime)
-                        let driftSeconds = abs(drift.seconds)
-
-                if driftSeconds > 0.25 {
+                let lagSeconds = CMTimeSubtract(controlTimebase.time, frameTime).seconds
+                if lagSeconds > 0.25 {
                     CMTimebaseSetTime(controlTimebase, time: frameTime)
                     displayLayer.flush()
-                    IteoLogger.default.log(.warning, .video, "Drift detected, flushing layer", "drift", driftSeconds)
+                    IteoLogger.default.log(.warning, .video, "Drift detected, flushing layer", "drift", lagSeconds)
                     continue
                 }
             }
